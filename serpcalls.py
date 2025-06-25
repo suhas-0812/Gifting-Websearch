@@ -1,16 +1,17 @@
 import requests
 import json
+import streamlit as st
 
 def get_product_links(query):
     params = {
-        "api_key": "496c86a4cd9773be0204caaf0a304d2533a895b2150fbb5aa7a72cdc738dbbb7",
+        "api_key": st.secrets["api_keys"]["serp_api"],
         "engine": "google",
         "q": query,
         "location": "India",
         "google_domain": "google.co.in",
         "gl": "in",
         "hl": "en",
-        "num": 1  # Limit to 5 results
+        "num": 1  # Limit to 1 result
     }
 
     # Disable SSL verification
@@ -20,7 +21,7 @@ def get_product_links(query):
 
     data = response.json()
 
-    if data["organic_results"]:
+    if data.get("organic_results"):
         return data["organic_results"][0]["link"]
     else:
         return None
