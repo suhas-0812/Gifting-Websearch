@@ -57,21 +57,21 @@ if st.button("🔍 Find Gift Ideas", type="primary"):
         if "error" in parsed_request:
             st.error(f"Error analyzing request: {parsed_request['error']}")
             st.stop()
-        print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Parsed request using Azure OpenAI")
+        st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Parsed request using Azure OpenAI")
         
         perplexity_recommendations = generate_product_ideas(user_input, parsed_request)
         progress_bar.progress(0.4)
         if "error" in perplexity_recommendations:
             st.error(f"Error generating product ideas: {perplexity_recommendations['error']}")
             st.stop()
-        print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Generated product ideas using Perplexity")
+        st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Generated product ideas using Perplexity")
         
         formatted_output = format_perplexity_output(perplexity_recommendations)
         progress_bar.progress(0.6)
         if "error" in formatted_output:
             st.error(f"Error formatting product ideas: {formatted_output['error']}")
             st.stop()
-        print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Formatted output using Azure OpenAI")
+        st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Formatted output using Azure OpenAI")
 
         results = {
             "products": [
@@ -89,8 +89,9 @@ if st.button("🔍 Find Gift Ideas", type="primary"):
                 product = future_to_product[future]
                 product["link"] = future.result()
                 count += 1
-                print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Processed {count} of {length} products")
-        print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetched product links using SerpAPI")
+                if count % 2 == 0 or count == length:  # Show progress every 2 products or at the end
+                    st.write(f"🔍 [{datetime.datetime.now().strftime('%H:%M:%S')}] Processed {count} of {length} products")
+        st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Fetched product links using SerpAPI")
         progress_bar.progress(0.8)
 
         # Extract product metadata in parallel
@@ -123,8 +124,9 @@ if st.button("🔍 Find Gift Ideas", type="primary"):
                         "url": product.get("link", "")
                     }
                 metadata_count += 1
-                print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Extracted metadata for {metadata_count} of {len(results['products'])} products")
-        print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Extracted product metadata using crawl4ai")
+                if metadata_count % 2 == 0 or metadata_count == len(results['products']):  # Show progress every 2 extractions
+                    st.write(f"📊 [{datetime.datetime.now().strftime('%H:%M:%S')}] Extracted metadata for {metadata_count} of {len(results['products'])} products")
+        st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Extracted product metadata using crawl4ai")
         progress_bar.progress(1.0)
 
         # Display results in a nice format
