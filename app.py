@@ -131,6 +131,7 @@ if st.button("🔍 Find Gift Ideas", type="primary"):
 
         # Display results in a nice format
         st.success("🎉 Found amazing gift recommendations for you!")
+        st.json(results)
         st.markdown("---")
         
         for i, product in enumerate(results["products"]):
