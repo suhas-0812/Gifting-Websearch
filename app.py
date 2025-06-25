@@ -17,7 +17,6 @@ st.set_page_config(
 )
 
 # Install Playwright browsers on first run (for Streamlit Cloud)
-# Install Playwright browsers on first run (for Streamlit Cloud)
 @st.cache_resource
 def install_playwright():
     try:
@@ -34,10 +33,6 @@ def install_playwright():
 
 # Install browsers
 install_playwright()
-
-# Install browsers and show status
-with st.spinner("🔧 Setting up browser dependencies..."):
-    playwright_ready = install_playwright()
 
 # Title and description
 st.title("🎁 AI-Powered Gift Recommender")
