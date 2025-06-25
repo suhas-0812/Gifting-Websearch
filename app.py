@@ -17,31 +17,23 @@ st.set_page_config(
 )
 
 # Install Playwright browsers on first run (for Streamlit Cloud)
+# Install Playwright browsers on first run (for Streamlit Cloud)
 @st.cache_resource
 def install_playwright():
     try:
-        import os
-        # Set environment variables for headless operation
-        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '/tmp/playwright'
-        os.environ['PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD'] = '0'
-        
-        # Install only chromium browser with dependencies
-        result = subprocess.run([
-            sys.executable, "-m", "playwright", "install", 
-            "--with-deps", "chromium"
-        ], check=True, capture_output=True, text=True, timeout=300)
-        
-        st.success("✅ Playwright browsers installed successfully")
+        # Only install chromium browser (dependencies handled by packages.txt)
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], 
+                      check=True, capture_output=True, text=True)
         return True
-    except subprocess.TimeoutExpired:
-        st.error("⏰ Playwright installation timed out")
-        return False
     except subprocess.CalledProcessError as e:
-        st.error(f"❌ Playwright installation failed: {e.stderr}")
+        st.error(f"Playwright browser installation failed: {e.stderr}")
         return False
     except Exception as e:
-        st.error(f"🚨 Unexpected error installing Playwright: {e}")
+        st.error(f"Unexpected error installing Playwright: {e}")
         return False
+
+# Install browsers
+install_playwright()
 
 # Install browsers and show status
 with st.spinner("🔧 Setting up browser dependencies..."):
