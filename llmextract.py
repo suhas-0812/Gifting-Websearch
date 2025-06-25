@@ -74,6 +74,11 @@ async def extract_product_data(
         Dict containing extracted product data or error information
     """
     try:
+        import os
+        
+        # Set environment variables for Streamlit Cloud
+        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '/tmp/playwright'
+        
         # Configure LLM
         llm_config = LLMConfig(
             provider=azure_provider,
@@ -114,7 +119,7 @@ async def extract_product_data(
             extra_args={"temperature": 0.0, "max_tokens": 2000}
         )
 
-        # Build crawler config
+        # Build crawler config with Streamlit Cloud optimizations
         crawl_config = CrawlerRunConfig(
             extraction_strategy=llm_strategy,
             cache_mode=CacheMode.BYPASS,
@@ -122,12 +127,16 @@ async def extract_product_data(
             only_text=True,  # Extract only text content
             remove_overlay_elements=True,  # Remove popups, ads, etc.
             magic=False,  # Disable smart content extraction
-            page_timeout=60000,  # 60 second timeout for page loading
-            delay_before_return_html=2.0  # Wait 2 seconds before extracting
+            page_timeout=45000,  # Reduced timeout for cloud environment
+            delay_before_return_html=1.0  # Reduced delay
         )
 
-        # Create browser config
-        browser_cfg = BrowserConfig(headless=True)
+        # Create browser config with cloud-optimized settings
+        browser_cfg = BrowserConfig(
+            headless=True,
+            browser_type="chromium",
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
 
         async with AsyncWebCrawler(config=browser_cfg) as crawler:
             result = await crawler.arun(url=url, config=crawl_config)
@@ -155,14 +164,20 @@ async def extract_product_data(
             else:
                 return {
                     "success": False,
-                    "error": result.error_message,
+                    "error": f"Crawling failed: {result.error_message}",
                     "url": url
                 }
                 
+    except ImportError as e:
+        return {
+            "success": False,
+            "error": f"Missing dependencies: {str(e)}",
+            "url": url
+        }
     except Exception as e:
         return {
             "success": False,
-            "error": str(e),
+            "error": f"Extraction error: {str(e)}",
             "url": url
         }
 

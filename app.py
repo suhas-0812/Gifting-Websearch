@@ -20,18 +20,32 @@ st.set_page_config(
 @st.cache_resource
 def install_playwright():
     try:
-        # Only install chromium browser (dependencies handled by packages.txt)
-        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], 
-                      check=True, capture_output=True, text=True)
+        import os
+        # Set environment variables for headless operation
+        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '/tmp/playwright'
+        os.environ['PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD'] = '0'
+        
+        # Install only chromium browser with dependencies
+        result = subprocess.run([
+            sys.executable, "-m", "playwright", "install", 
+            "--with-deps", "chromium"
+        ], check=True, capture_output=True, text=True, timeout=300)
+        
+        st.success("✅ Playwright browsers installed successfully")
         return True
+    except subprocess.TimeoutExpired:
+        st.error("⏰ Playwright installation timed out")
+        return False
     except subprocess.CalledProcessError as e:
-        st.error(f"Playwright browser installation failed: {e.stderr}")
+        st.error(f"❌ Playwright installation failed: {e.stderr}")
         return False
     except Exception as e:
-        st.error(f"Unexpected error installing Playwright: {e}")
+        st.error(f"🚨 Unexpected error installing Playwright: {e}")
         return False
 
-# Install browsers
+# Install browsers and show status
+with st.spinner("🔧 Setting up browser dependencies..."):
+    playwright_ready = install_playwright()
 
 # Title and description
 st.title("🎁 AI-Powered Gift Recommender")
@@ -94,39 +108,53 @@ if st.button("🔍 Find Gift Ideas", type="primary"):
         st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Fetched product links using SerpAPI")
         progress_bar.progress(0.8)
 
-        # Extract product metadata in parallel
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_product = {
-                executor.submit(
-                    lambda p: extract_product_sync(
-                        p["link"],
-                        azure_provider="azure/gpt-4o",
-                        api_token=st.secrets["api_keys"]["azure_openai"],
-                        base_url=st.secrets["azure_openai"]["endpoint"]
-                    ) if "link" in p and p["link"] else {"success": False, "error": "No link available"},
-                    product
-                ): product 
-                for product in results["products"]
-            }
-            metadata_count = 0
-            for future in as_completed(future_to_product):
-                product = future_to_product[future]
-                try:
-                    metadata = future.result()
-                    if metadata.get("success"):
-                        product["metadata"] = metadata["data"]
-                    else:
-                        product["metadata"] = None
-                except Exception as e:
-                    product["metadata"] = {
-                        "success": False,
-                        "error": f"Extraction failed: {str(e)}",
-                        "url": product.get("link", "")
-                    }
-                metadata_count += 1
-                if metadata_count % 2 == 0 or metadata_count == len(results['products']):  # Show progress every 2 extractions
-                    st.write(f"📊 [{datetime.datetime.now().strftime('%H:%M:%S')}] Extracted metadata for {metadata_count} of {len(results['products'])} products")
-        st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Extracted product metadata using crawl4ai")
+        # Extract product metadata in parallel (only if Playwright is ready)
+        if playwright_ready:
+            st.write("🚀 Starting product metadata extraction...")
+            with ThreadPoolExecutor(max_workers=5) as executor:  # Reduced workers for Streamlit Cloud
+                future_to_product = {
+                    executor.submit(
+                        lambda p: extract_product_sync(
+                            p["link"],
+                            azure_provider="azure/gpt-4o",
+                            api_token=st.secrets["api_keys"]["azure_openai"],
+                            base_url=st.secrets["azure_openai"]["endpoint"]
+                        ) if "link" in p and p["link"] else {"success": False, "error": "No link available"},
+                        product
+                    ): product 
+                    for product in results["products"]
+                }
+                metadata_count = 0
+                for future in as_completed(future_to_product):
+                    product = future_to_product[future]
+                    try:
+                        metadata = future.result()
+                        if metadata.get("success"):
+                            product["metadata"] = metadata["data"]
+                        else:
+                            product["metadata"] = {
+                                "success": False,
+                                "error": metadata.get("error", "Extraction failed"),
+                                "url": product.get("link", "")
+                            }
+                    except Exception as e:
+                        product["metadata"] = {
+                            "success": False,
+                            "error": f"Extraction failed: {str(e)}",
+                            "url": product.get("link", "")
+                        }
+                    metadata_count += 1
+                    if metadata_count % 2 == 0 or metadata_count == len(results['products']):
+                        st.write(f"📊 [{datetime.datetime.now().strftime('%H:%M:%S')}] Extracted metadata for {metadata_count} of {len(results['products'])} products")
+            st.write(f"✅ [{datetime.datetime.now().strftime('%H:%M:%S')}] Completed product metadata extraction")
+        else:
+            st.warning("⚠️ Browser setup failed. Showing results without detailed metadata extraction.")
+            for product in results["products"]:
+                product["metadata"] = {
+                    "success": False,
+                    "error": "Browser dependencies not available in this environment",
+                    "url": product.get("link", "")
+                }
         progress_bar.progress(1.0)
 
         # Display results in a nice format
